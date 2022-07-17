@@ -8,6 +8,8 @@ declare interface String {
 
 String.prototype.trimQuotes = function (this : string) {return this.trim().replaceAll('"', '');};
 
+let flatArrEq = (array1: any[], array2: any[]) => array1.length === array2.length && array1.every((value, index) => value === array2[index]);
+
 class TuringMachine {
 	numTapes: number;
 	tapes: Uint16Array[];
@@ -114,6 +116,8 @@ class TuringMachine {
 			tapeAlphabetMap.set(this.tapeAlphabet[i], i);
 		}
 
+		tapeAlphabetMap.set("blank", 0);
+
 		lines = lines.slice(parseInt(i) + 1);
 
 		let temp = "";
@@ -181,16 +185,52 @@ class TuringMachine {
 		this.stateMap = stateNameMap;
 		this.tapeAlphabetMap = tapeAlphabetMap;
 		this.tapes = [];
+		this.currentPosition = [];
 		for (let i = 0; i < this.numTapes; i++){
 			let arr = new Uint16Array(1028);
+			this.currentPosition.push(512);
 			this.tapes.push(arr);
 		}
-		console.log(this, this.stateTransitions[0]);
+		for (let i = 0; i < input.length; i++){
+			this.tapes[0][512 + i] = tapeAlphabetMap.get(input[i]);
+		}
 		return this;
 	}
 
-	next_step(){
+	nextStep(): boolean {
 		let transitions = this.stateTransitions[this.currentState];
+		let currentStates = this.currentPosition.map((val, ind) => this.tapes[ind][val]);
+
+		let changed = false;
+
+		for (let i of transitions){
+			if (currentStates.every((val, ind) => i[0][ind][0] == val)){
+				if (changed)
+					throw new Error("not deterministic, you can convert it tho");
+				let newValues = currentStates.map((_, ind) => i[0][ind][1]);
+				let directions = currentStates.map((_, ind) => i[0][ind][2]);
+				newValues.forEach((val, ind) => { this.tapes[ind][this.currentPosition[ind]] = val;});
+				directions.forEach((val, ind) => { this.currentPosition[ind] += val == Direction.Left ? -1 : val == Direction.Right ? 1 : 0});
+				this.currentState = i[1];
+				changed = true;
+			}
+		}
+		return changed;
+	}
+
+	run(render){
+		let counter = 1;
+		while(this.nextStep()){
+			console.log(`tapes step ${counter}: state(${this.stateLabels[this.currentState]})`);
+			render();
+			counter += 1;
+		}
+	}
+
+	showTapesCli(){
+		for (let i = 0; i < this.tapes.length; i++){
+			console.log(Array.from(this.tapes[i].slice(this.currentPosition[i] - 10, this.currentPosition[i] + 30)).map(x => this.tapeAlphabet[x]).join(" | "));
+		}
 	}
 
 	deterministic(){
@@ -226,11 +266,15 @@ alphabet: ["a", "b", "d"]
 tapeAlphabet: +["c", blank]
 currentState: stuff
 acceptingStates: [end, other_end]
+input: "aaaaaaaaa"
 table:
 	stuff:
-		["a" -> "b", R; "d" -> |, L]: stuff
+		["a" -> "b", R; blank -> |, L]: stuff
+		[blank -> "b", R; blank -> "a", R]: end
 	end:
 	other_end:
 `
 
-new TuringMachine(test)
+let tm = new TuringMachine(test)
+tm.run();
+console.log(tm)
