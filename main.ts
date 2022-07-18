@@ -222,15 +222,18 @@ class TuringMachine {
 		let counter = 1;
 		while(this.nextStep()){
 			console.log(`tapes step ${counter}: state(${this.stateLabels[this.currentState]})`);
-			render();
+			render(this);
 			counter += 1;
 		}
 	}
 
-	showTapesCli(){
-		for (let i = 0; i < this.tapes.length; i++){
-			console.log(Array.from(this.tapes[i].slice(this.currentPosition[i] - 10, this.currentPosition[i] + 30)).map(x => this.tapeAlphabet[x]).join(" | "));
+	showTapesCli(sth: TuringMachine){
+		for (let i = 0; i < sth.tapes.length; i++){
+			console.log(" ".repeat(4 * (5)), " ↓");
+			console.log("|", Array.from(sth.tapes[i].slice(sth.currentPosition[i] - 5, sth.currentPosition[i] + 20)).map(x => sth.tapeAlphabet[x]).join(" | "), "|");
 		}
+
+		console.log("\n");
 	}
 
 	deterministic(){
@@ -270,11 +273,11 @@ input: "aaaaaaaaa"
 table:
 	stuff:
 		["a" -> "b", R; blank -> |, L]: stuff
-		[blank -> "b", R; blank -> "a", R]: end
+		[blank -> "b", C; blank -> "a", R]: end
 	end:
 	other_end:
 `
 
 let tm = new TuringMachine(test)
-tm.run();
+tm.run(tm.showTapesCli);
 console.log(tm)
